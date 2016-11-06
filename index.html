@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+	
+		<meta charset="utf-8"/>
+		<title>Snake Game</title>
+		
+	</head>
+	
+	
+	<body bgcolor = "white">
+	
+		<center>
+		
+			<canvas id = "canvas" width="800" height="600"> Your browser does not support the canvas element. </canvas>
+			
+		</center>
+		
+		
+		
+		<script>
+		
+		window.onload = function(){
+			
+			input.init();
+			snake = new Snake(10,14,"#66ff33");
+			Food.instances.push(new Food(29,14,"red"));
+			
+			requestAnimationFrame(frame);	// Initialize game loop.
+		}
+		
+		var game = {
+			state: 1,
+			difficulity: 3,
+			
+			lose: function(){
+			
+				grid.drawTile(snake.loseX,snake.loseY,"green");
+				this.state = 0;
+				
+				setTimeout(function(){
+					//alert("Length: " + snake.length + " Score: " + snake.length/game.difficulity)
+					alert(" Score: " + snake.length/game.difficulity)
+				},0);
+				
+			}
+		}
+		
+		var input = {		// Input Engine
+		
+			left: 		false,
+			up: 			false,
+			right: 		false,
+			down: 		false,
+			w:				false,
+			a:				false,
+			s:				false,
+			d:				false,
+			
+			init: function(){
+			
+				document.addEventListener("keydown",function(event){
+					input.checkKey(event,true);
+				});
+				
+				document.addEventListener("keyup",function(event){
+					input.checkKey(event,false);
+				});
+				
+			},
+			
+			checkKey: function(event,bool){
+			
+				switch(event.keyCode){
+					case 37:
+						this.left = bool;
+					break;
+					
+					case 38:
+						this.up = bool;
+					break;
+					
+					case 39:
+						this.right = bool;
+					break;
+					
+					case 40:
+						this.down = bool;
+					break;
+					
+					case 87:
+						this.w = bool;
+					break;
+					
+					case 65:
+						this.a = bool;
+					break;
+					
+					case 83:
+						this.s = bool;
+					break;
+					
+					case 68:
+						this.d = bool;
+					break;
+					
+				}
+				
+			}
+			
+		}
+		
+		
+		var grid = {
+		
+			tileSize: 	20,
+			width: 		40,
+			height: 	30,
+			color: "#363434",
+			
+			draw: function(){
+				
+				//
+				// Draw Columns
+				//
+				for(var x=0; x<this.width+1; x++){
+				
+					graphics.drawSegment(
+					x*this.tileSize,0,									// Point 1
+					x*this.tileSize,this.height*this.tileSize,	// Point 2
+					this.color);
+					
+				}
+				
+				//
+				// Draw Rows
+				//
+				for(var y=0; y<this.height+1; y++){
+				
+					graphics.drawSegment(
+					0,y*this.tileSize,									// Point 1
+					this.width*this.tileSize,y*this.tileSize,		// Point 2
+					this.color);
+					
+				}
+				
+			},
+			
+			//
+			// Function to fill in a tile with a specific color.
+			//
+			drawTile: function(x,y,color){
+				
+				graphics.fillRect(x*this.tileSize+1,y*this.tileSize+1,this.tileSize-2,this.tileSize-2,color);
+				
+			}
+			
+			
+		}
+		
+		
+		//
+		// Player
+		//
+		var snake;
+		function Snake(x,y,color){
+			
+			this.x = x;
+			this.y = y;
+			this.color = color;
+			this.length = 0;		// Length does not include snake's head.
+			this.positionsX = [];
+			this.positionsY = [];
+			this.requestedDirection = null;
+			this.direction = null;
+			this.score = 0;
+			this.loseX = null;
+			this.loseY = null;
+			
+			this.keyInputs = function(){
+				
+				if((input.left || input.a) && this.direction !== "right"){
+				
+					this.requestedDirection = "left";
+					return;
+					
+				} else if((input.right || input.d) && this.direction !== "left"){
+				
+					this.requestedDirection = "right";
+					return;
+					
+				} else if((input.up || input.w) && this.direction !== "down"){
+				
+					this.requestedDirection = "up";
+					return;
+					
+				} else if ((input.down || input.s) && this.direction !== "up"){
+				
+					this.requestedDirection = "down";
+					return;
+					
+				}
+				
+			}
+			
+			this.update = function(){
+				
+				this.positionsX.push(this.x);						// Update snake's body's positions before its head's positions so that the body positions are behind by 1 step (Read next comment).
+				this.positionsY.push(this.y);						// Remember that the snake's body's positions do not include it's head!
+				
+				if(this.positionsX.length > this.length){
+					this.positionsX.splice(0,1);
+					this.positionsY.splice(0,1);
+				}
+				
+				this.direction = this.requestedDirection;
+				
+				switch(this.direction){
+					case "left":
+						this.x--;
+					break;
+					
+					case "right":
+						this.x++;
+					break;
+					
+					case "up":
+						this.y++;
+					break;
+					
+					case "down":
+						this.y--;
+					break;
+				}
+				
+				if(this.hitEdge()){
+				
+					this.loseX = this.positionsX[this.length-1];
+					this.loseY = this.positionsY[this.length-1];
+					game.lose();
+				}
+				
+				var bodyCheck = this.hitBody();
+				if(bodyCheck.hit){
+					
+					grid.drawTile(bodyCheck.x,bodyCheck.y,"blue")
+					
+					this.loseX = bodyCheck.posX;
+					this.loseY = bodyCheck.posY;
+					game.lose();
+				}
+				
+				
+				for(var i=0; i<Food.instances.length; i++){
+				
+					if(this.x === Food.instances[i].x && this.y === Food.instances[i].y){
+					
+						this.length+= game.difficulity;
+						Food.instances[i].relocate();
+						break;
+						
+					}
+					
+				}
+				
+				
+				
+				
+			}
+			
+			this.draw = function(){
+			
+				
+				grid.drawTile(this.x,this.y,this.color);		// Draw snake's head.
+			
+				for(var i=0; i<this.length; i++){		//Draw snake's body.
+				
+					grid.drawTile(this.positionsX[i],this.positionsY[i],this.color);
+					
+				}
+					
+				/*if(game.lost && this.loseX !== null){
+					
+					grid.drawTile(this.loseX,this.loseY,"green");
+					
+				}*/
+				
+				
+			}
+			
+			this.hitEdge = function(){
+			
+				return this.x < 0 || this.x > grid.width-1 || this.y < 0 || this.y > grid.height-1;
+			
+			}
+			
+			this.hitBody = function(){
+			
+				for(var i=0; i<this.length; i++){
+					if(this.x === this.positionsX[i] && this.y === this.positionsY[i]){
+					
+						return {		// If snake's head collides with body, return out of function with point of intersection
+							hit: true,
+							posX: this.positionsX[i],
+							posY: this.positionsY[i]
+						}
+						
+					}
+				}
+				
+				return {			// If no collisions are found, return false
+					hit: false,
+					posX: null,
+					posY: null 
+				}
+
+			}
+			
+			
+		}
+		
+		function Food(x,y,color){
+		
+			this.x = x;
+			this.y = y;
+			this.color = color;
+			
+			this.relocate = function(){		// Function to relocate a food object once it has been eaten. This way new food objects do not have to be created and deleted!
+				
+				this.x = getRan(0,grid.width-1);
+				this.y = getRan(0,grid.height-1);
+				
+			}
+		
+		}( Food.instances = [],
+		
+			Food.draw = function(){
+			
+			for(var i=0; i<Food.instances.length; i++){
+				
+				grid.drawTile(Food.instances[i].x,Food.instances[i].y,Food.instances[i].color);
+				
+			}
+			
+		});
+		
+		var getRan = function(min,max){
+		
+			return Math.floor(Math.random()*(max-min+1)+min);
+			
+		}
+		
+		
+		
+		var canvas = document.getElementById("canvas");
+		var ctx = canvas.getContext("2d");
+		//
+		// Graphics Object. Purpose is to draw to screen as if the bottom left of the screen is (0,0).
+		//
+		var graphics = {
+			
+			getY: function(y,height){	//treat bottom left as (0,0);	//give height parameter in the case of drawing a rectangle.
+				return height === undefined ? canvas.height-y : canvas.height-y-height;
+			},
+			
+			drawSegment: function(x1,y1,x2,y2,color){
+				var storedColor = ctx.strokeStyle;
+				ctx.strokeStyle = color;
+				ctx.beginPath();
+				
+				ctx.moveTo(x1,this.getY(y1));
+				ctx.lineTo(x2,this.getY(y2));
+				
+				ctx.stroke();
+				ctx.closePath();
+				ctx.strokeStyle = storedColor;
+			},
+			
+			fillRect: function(x,y,width,height,color){
+				var storedColor = ctx.fillStyle;
+				
+				ctx.fillStyle = color;
+				ctx.fillRect(x,this.getY(y,height),width,height);
+				
+				ctx.fillStyle = storedColor;
+			}
+			
+		}
+		
+		//
+		// Get time in milliseconds
+		//
+		function timestamp() {
+		  return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
+		}
+		
+		var 	now,
+				last = 0,
+				dt,
+				accumulation = 0,
+				fps,
+				step = 1/16;	//update game every 1/16 seconds.
+				
+		//
+		// Game loop
+		//	
+		function frame(){
+			
+			now = timestamp();
+			dt = now - last;
+			accumulation += Math.min(1, (now-last)/1000);			//Limit accumulation time to 1 second.
+			fps = 1/(dt/1000);
+			
+			keyInputs();
+			
+		   while(accumulation>=step){
+				
+			   update(step);
+			   accumulation -= step;
+			   
+		   }
+
+		   draw(dt);
+		   last = now;
+		   
+		   requestAnimationFrame(frame);
+		}
+		
+		
+		function keyInputs(){
+		
+			snake.keyInputs();
+		
+		}
+			
+		function update(){
+			
+			if(game.state === 1){
+				snake.update();
+			}
+			
+		}
+		
+		function draw(){
+		
+			if(game.state === 1){
+				//
+				// Draw Background
+				//
+				graphics.fillRect(0,0,grid.width*grid.tileSize,grid.height*grid.tileSize,"black");
+				
+				grid.draw();	
+				snake.draw();
+				
+			}
+			
+			Food.draw();
+			
+		}
+		
+		</script>
+		
+		
+		
+		
+	</body>
+</html>
