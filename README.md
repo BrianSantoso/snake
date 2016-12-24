@@ -1,5 +1,5 @@
 # snake
-The class Snake game in JavaScript. Only 1 file. All code written by Brian Santoso.
+The classic Snake game in JavaScript. Only 1 file. All code written by Brian Santoso.
 ## High Scores
 1. Matt Au          - 58
 2. Brian Santoso    - 57
